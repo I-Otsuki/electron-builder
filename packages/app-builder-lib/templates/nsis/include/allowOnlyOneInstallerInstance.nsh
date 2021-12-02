@@ -35,6 +35,16 @@
     !endif
 !macroend
 
+!macro FIND_PROCESS _FILE _ERR
+  !ifdef INSTALL_MODE_PER_ALL_USERS
+    ${nsProcess::FindProcess} "${_FILE}" ${_ERR}
+  !else
+    # find process owned by current user
+    nsExec::Exec `cmd /c tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq ${_FILE}" | find "${_FILE}"`
+    Pop ${_ERR}
+  !endif
+!macroend
+
 !macro _CHECK_APP_RUNNING
   ${GetProcessInfo} 0 $pid $1 $2 $3 $4
   ${if} $3 != "${APP_EXECUTABLE_FILENAME}"
@@ -43,7 +53,7 @@
       Sleep 300
     ${endIf}
 
-    ${nsProcess::FindProcess} "${APP_EXECUTABLE_FILENAME}" $R0
+    !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
     ${if} $R0 == 0
       ${if} ${isUpdated}
         # allow app to exit without explicit kill
@@ -68,7 +78,7 @@
       loop:
         IntOp $R1 $R1 + 1
 
-        ${nsProcess::FindProcess} "${APP_EXECUTABLE_FILENAME}" $R0
+        !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
         ${if} $R0 == 0
           # wait to give a chance to exit gracefully
           Sleep 1000
